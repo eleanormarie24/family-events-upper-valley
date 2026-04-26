@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Out the Door - Upper Valley Family Events</title>
+  <title>Little Explorers - Upper Valley Family Events</title>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -51,8 +51,8 @@ const GOOGLE_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1OULA83wl-
 
 const RECURRENCE_WINDOW_DAYS = 90;
 
-const USER_LAT = 43.642;  // Upper Valley, NH
-const USER_LNG = -72.252;
+const DEFAULT_LAT = 43.642;  // Upper Valley, NH (fallback)
+const DEFAULT_LNG = -72.252;
 
 // ============================================================
 // SAMPLE DATA — Remove once Google Sheet is connected
@@ -421,6 +421,33 @@ function FamilyEventsApp() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
 
+  // User location
+  const [userLat, setUserLat] = React.useState(DEFAULT_LAT);
+  const [userLng, setUserLng] = React.useState(DEFAULT_LNG);
+  const [locationName, setLocationName] = React.useState("Lebanon, NH");
+  const [locating, setLocating] = React.useState(false);
+
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      alert("Your browser doesn't support location services.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLat(pos.coords.latitude);
+        setUserLng(pos.coords.longitude);
+        setLocationName("your location");
+        setLocating(false);
+      },
+      (err) => {
+        alert("Couldn't get your location. Using Lebanon, NH as default.");
+        setLocating(false);
+      },
+      { timeout: 10000 }
+    );
+  }
+
   // Filters
   const [ageFilter, setAgeFilter] = React.useState(null); // null = all
   const [costFilter, setCostFilter] = React.useState(null); // null = all, 0 = free, 10 = under $10, 999 = any
@@ -463,9 +490,9 @@ function FamilyEventsApp() {
   const eventsWithDistance = React.useMemo(() => {
     return events.map(e => ({
       ...e,
-      distance: getDistance(USER_LAT, USER_LNG, e.Lat, e.Lng)
+      distance: getDistance(userLat, userLng, e.Lat, e.Lng)
     }));
-  }, [events]);
+  }, [events, userLat, userLng]);
 
   const filteredEvents = React.useMemo(() => {
     let filtered = eventsWithDistance;
@@ -610,7 +637,7 @@ function FamilyEventsApp() {
           lineHeight: 1.15,
           position: "relative",
         }}>
-          Out the Door
+          Little Explorers
         </h1>
         <p style={{
           margin: 0,
@@ -619,7 +646,7 @@ function FamilyEventsApp() {
           fontWeight: 600,
           position: "relative",
         }}>
-          Family Events in the Upper Valley
+          Family events in the Upper Valley
         </p>
         {GOOGLE_SHEET_EDIT_URL && (
           <a
@@ -772,7 +799,32 @@ function FamilyEventsApp() {
               letterSpacing: "0.08em",
               color: "#8A7F70",
               marginBottom: "6px",
-            }}>Distance from Lebanon, NH</div>
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}>
+              Distance from {locationName}
+              <button
+                onClick={useMyLocation}
+                disabled={locating}
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: "10px",
+                  border: "1.5px solid #2D4A22",
+                  background: locationName === "your location" ? "#E8F5E3" : "transparent",
+                  color: "#2D4A22",
+                  fontFamily: "'Nunito', sans-serif",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  cursor: locating ? "wait" : "pointer",
+                  textTransform: "none",
+                  letterSpacing: "0",
+                  opacity: locating ? 0.6 : 1,
+                }}
+              >
+                {locating ? "Finding..." : locationName === "your location" ? "✓ Using yours" : "📍 Use mine"}
+              </button>
+            </div>
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
               <FilterPill label="Any" active={distanceFilter === null} onClick={() => setDistanceFilter(null)} />
               <FilterPill label="< 2 mi" active={distanceFilter === 2} onClick={() => setDistanceFilter(distanceFilter === 2 ? null : 2)} />
